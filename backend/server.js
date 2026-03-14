@@ -11,10 +11,10 @@ connectDB();
 
 const app = express();
 
-// --- FIXED CORS CONFIGURATION ---
+
 const allowedOrigins = [
-  process.env.CLIENT_URL, // Your Render Frontend URL
-  "http://localhost:5173", // For local development
+  process.env.CLIENT_URL, 
+  "http://localhost:5173", 
   "http://127.0.0.1:5173"
 ];
 
