@@ -9,7 +9,7 @@ connectDB();
 const app = express();
 
 app.use(cors({
-  origin:      process.env.CLIENT_URL || "https://rentease-frontend-qkr6.onrender.com",
+  origin:     "https://rentease-frontend-qkr6.onrender.com",
   credentials: true,
 }));
 
