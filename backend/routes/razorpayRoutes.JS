@@ -54,5 +54,4 @@ router.post("/verify-payment", (req, res) => {
     res.status(500).json({ success: false, error: "Server error during verification" });
   }
 });
-
 module.exports = router;
