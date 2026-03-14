@@ -11,7 +11,9 @@ import {
   Home, Download, FileText,
 } from "lucide-react";
 
-const API = "https://rentease-backend-oxyy.onrender.com";
+// ── API base — reads from .env on both local and Render ───────────────────────
+const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+
 const fmt = (n) => new Intl.NumberFormat("en-IN").format(Math.round(n || 0));
 
 const COUPONS = {
@@ -22,19 +24,17 @@ const COUPONS = {
 };
 
 const PAYMENT_METHODS = [
-  { id: "card",       icon: CreditCard, label: "Card",            sub: "Credit / Debit"  },
+  { id: "card",       icon: CreditCard, label: "Card",            sub: "Credit / Debit"      },
   { id: "upi",        icon: Smartphone, label: "UPI",             sub: "GPay \u00b7 PhonePe" },
   { id: "wallet",     icon: Wallet,     label: "Wallet",          sub: "Paytm \u00b7 Amazon" },
-  { id: "netbanking", icon: Landmark,   label: "Net Banking",     sub: "All major banks" },
-  { id: "cod",        icon: Banknote,   label: "Pay on Delivery", sub: "Cash / UPI"      },
+  { id: "netbanking", icon: Landmark,   label: "Net Banking",     sub: "All major banks"     },
+  { id: "cod",        icon: Banknote,   label: "Pay on Delivery", sub: "Cash / UPI"          },
 ];
 
-const RAZORPAY_METHOD_MAP = {
-  card:       { card: 1 },
-  upi:        { upi: 1 },
-  wallet:     { wallet: 1 },
-  netbanking: { netbanking: 1 },
-};
+// ── RAZORPAY_METHOD_MAP intentionally removed ────────────────────────────────
+// Passing a `method` key to Razorpay options causes BAD_REQUEST_ERROR in Live
+// Mode unless your merchant account has that feature explicitly enabled.
+// Razorpay's standard checkout handles payment method selection internally.
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -42,7 +42,7 @@ function loadRazorpayScript() {
     const s = document.createElement("script");
     s.id = "rzp-script";
     s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload = () => resolve(true);
+    s.onload  = () => resolve(true);
     s.onerror = () => resolve(false);
     document.body.appendChild(s);
   });
@@ -147,7 +147,7 @@ function generateReceiptHTML(receiptData) {
   <div class="body">
 
     <div class="section">
-      <div class="section-title">Customer & Delivery Details</div>
+      <div class="section-title">Customer &amp; Delivery Details</div>
       <div class="info-grid">
         <div class="info-box">
           <div class="info-label">Customer Name</div>
@@ -253,9 +253,9 @@ function generateReceiptHTML(receiptData) {
 function downloadReceipt(receiptData) {
   const html = generateReceiptHTML(receiptData);
   const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
   a.download = `RentEase_Receipt_${receiptData.orderId}.html`;
   document.body.appendChild(a);
   a.click();
@@ -308,7 +308,7 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       <div>
         <p className="text-[11px] font-black text-blue-700 uppercase tracking-wider mb-0.5">Real Payment via Razorpay</p>
         <p className="text-[10px] text-blue-600 font-medium leading-relaxed">
-          Clicking Pay opens Razorpay's secure popup. Money is deducted only after you complete authentication (OTP / PIN) inside the popup.
+          Clicking Pay opens Razorpay&apos;s secure popup. Money is deducted only after you complete authentication (OTP / PIN) inside the popup.
         </p>
       </div>
     </div>
@@ -331,12 +331,6 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
           </div>
         ))}
       </div>
-      <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-start gap-2">
-        <AlertCircle size={11} className="text-amber-500 flex-shrink-0 mt-0.5" />
-        <p className="text-[9px] text-amber-700 font-medium leading-relaxed">
-          Test card: <span className="font-mono font-bold">4111 1111 1111 1111</span> &nbsp;|&nbsp; Expiry: any future date &nbsp;|&nbsp; CVV: any 3 digits &nbsp;|&nbsp; OTP: <span className="font-bold">1234</span>
-        </p>
-      </div>
     </motion.div>
   );
 
@@ -354,24 +348,18 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { name: "Google Pay", color: "text-blue-600", bg: "bg-blue-50" },
-          { name: "PhonePe", color: "text-violet-600", bg: "bg-violet-50" },
-          { name: "Paytm", color: "text-sky-600", bg: "bg-sky-50" },
-          { name: "BHIM", color: "text-emerald-600", bg: "bg-emerald-50" },
-          { name: "CRED", color: "text-slate-700", bg: "bg-slate-50" },
-          { name: "Amazon Pay", color: "text-orange-600", bg: "bg-orange-50" },
+          { name: "Google Pay",  color: "text-blue-600",   bg: "bg-blue-50"    },
+          { name: "PhonePe",     color: "text-violet-600", bg: "bg-violet-50"  },
+          { name: "Paytm",       color: "text-sky-600",    bg: "bg-sky-50"     },
+          { name: "BHIM",        color: "text-emerald-600",bg: "bg-emerald-50" },
+          { name: "CRED",        color: "text-slate-700",  bg: "bg-slate-50"   },
+          { name: "Amazon Pay",  color: "text-orange-600", bg: "bg-orange-50"  },
         ].map(app => (
           <div key={app.name} className={`${app.bg} rounded-xl px-2 py-2.5 text-center`}>
             <Smartphone size={13} className={`${app.color} mx-auto mb-1`} />
             <span className={`text-[8px] font-black ${app.color}`}>{app.name}</span>
           </div>
         ))}
-      </div>
-      <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center gap-2">
-        <AlertCircle size={11} className="text-amber-500 flex-shrink-0" />
-        <p className="text-[9px] text-amber-700 font-medium">
-          Test mode: Use UPI ID <span className="font-mono font-bold">success@razorpay</span> to simulate a successful payment. QR scanning is disabled in test mode.
-        </p>
       </div>
     </motion.div>
   );
@@ -390,12 +378,12 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         {[
-          { name: "Paytm Wallet", color: "text-sky-600", bg: "bg-sky-50" },
-          { name: "Amazon Pay", color: "text-orange-600", bg: "bg-orange-50" },
+          { name: "Paytm Wallet",   color: "text-sky-600",    bg: "bg-sky-50"    },
+          { name: "Amazon Pay",     color: "text-orange-600", bg: "bg-orange-50" },
           { name: "PhonePe Wallet", color: "text-violet-600", bg: "bg-violet-50" },
-          { name: "FreeCharge", color: "text-green-600", bg: "bg-green-50" },
-          { name: "MobiKwik", color: "text-blue-600", bg: "bg-blue-50" },
-          { name: "Jio Money", color: "text-indigo-600", bg: "bg-indigo-50" },
+          { name: "FreeCharge",     color: "text-green-600",  bg: "bg-green-50"  },
+          { name: "MobiKwik",       color: "text-blue-600",   bg: "bg-blue-50"   },
+          { name: "Jio Money",      color: "text-indigo-600", bg: "bg-indigo-50" },
         ].map(w => (
           <div key={w.name} className={`${w.bg} rounded-xl px-3 py-2.5 flex items-center gap-2`}>
             <Wallet size={11} className={w.color} />
@@ -414,12 +402,12 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
         <div>
           <p className="text-[11px] font-black text-indigo-700 mb-1">Net Banking</p>
           <p className="text-[10px] text-indigo-600 leading-relaxed">
-            Razorpay opens on the Net Banking tab. Select your bank and you will be redirected to your bank's secure login page to authorise the payment.
+            Razorpay opens on the Net Banking tab. Select your bank and you will be redirected to your bank&apos;s secure login page to authorise the payment.
           </p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
-        {["HDFC Bank", "ICICI Bank", "State Bank of India", "Axis Bank", "Kotak Mahindra Bank", "Punjab National Bank", "Bank of Baroda", "IndusInd Bank", "Yes Bank", "Canara Bank", "Union Bank of India", "IDFC First Bank"].map(bank => (
+        {["HDFC Bank","ICICI Bank","State Bank of India","Axis Bank","Kotak Mahindra Bank","Punjab National Bank","Bank of Baroda","IndusInd Bank","Yes Bank","Canara Bank","Union Bank of India","IDFC First Bank"].map(bank => (
           <div key={bank} className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
             <Landmark size={9} className="text-slate-400 flex-shrink-0" />
             <span className="text-[9px] font-bold text-slate-600 leading-tight">{bank}</span>
@@ -453,9 +441,9 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       />
       <div className="mt-3 space-y-2">
         {[
-          { icon: Banknote, text: "Exact cash or UPI required at delivery" },
-          { icon: Phone, text: "OTP verification mandatory on delivery" },
-          { icon: Truck, text: "Delivery within 3\u20135 business days" },
+          { icon: Banknote, text: "Exact cash or UPI required at delivery"  },
+          { icon: Phone,    text: "OTP verification mandatory on delivery"   },
+          { icon: Truck,    text: "Delivery within 3\u20135 business days"   },
         ].map(({ icon: Icon, text }, i) => (
           <div key={i} className="flex items-center gap-2.5 bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100">
             <Icon size={11} className="text-amber-500 flex-shrink-0" />
@@ -470,18 +458,18 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
 }
 
 export default function ProceedToPayment() {
-  const [cart, setCart] = useState([]);
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [coupon, setCoupon] = useState("");
+  const [cart,          setCart]          = useState([]);
+  const [step,          setStep]          = useState(1);
+  const [loading,       setLoading]       = useState(false);
+  const [success,       setSuccess]       = useState(false);
+  const [coupon,        setCoupon]        = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("upi");
-  const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState("");
-  const [orderId, setOrderId] = useState("");
+  const [errors,        setErrors]        = useState({});
+  const [serverError,   setServerError]   = useState("");
+  const [orderId,       setOrderId]       = useState("");
   const [razorpayPayId, setRazorpayPayId] = useState("");
-  const [receiptReady, setReceiptReady] = useState(null);
+  const [receiptReady,  setReceiptReady]  = useState(null);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
     landmark: "", altPhone: "", codPhone: "",
@@ -489,19 +477,19 @@ export default function ProceedToPayment() {
 
   useEffect(() => {
     const stored = JSON.parse(sessionStorage.getItem("checkoutCart") || sessionStorage.getItem("cart") || "[]");
-    const code = sessionStorage.getItem("checkoutCoupon") || "";
+    const code   = sessionStorage.getItem("checkoutCoupon") || "";
     if (code && COUPONS[code]) setAppliedCoupon(code);
     setCart(stored.map((item, idx) => ({
       ...item,
       cartId: item.cartId || item._id || `item-${idx}`,
-      price: Number(item.price || item.rentPerMonth) || 999,
+      price:  Number(item.price || item.rentPerMonth) || 999,
       tenure: Number(item.tenure) || 3,
     })));
     setForm(prev => ({
       ...prev,
       email: sessionStorage.getItem("userEmail") || "",
-      phone: sessionStorage.getItem("userPhone") || "",
-      name: sessionStorage.getItem("userName") || "",
+      phone: sessionStorage.getItem("userPhone")  || "",
+      name:  sessionStorage.getItem("userName")   || "",
     }));
   }, []);
 
@@ -514,14 +502,14 @@ export default function ProceedToPayment() {
   };
 
   const totals = useMemo(() => {
-    const c = appliedCoupon ? COUPONS[appliedCoupon] : null;
+    const c        = appliedCoupon ? COUPONS[appliedCoupon] : null;
     const subtotal = cart.reduce((acc, item) => acc + item.price * item.tenure, 0);
     if (c?.freeOrder) return { subtotal, gst: 0, deposit: 0, pctDiscount: 0, flatDiscount: subtotal, total: 0 };
-    const pctDiscount = c?.pct ? Math.round(subtotal * c.pct) : 0;
+    const pctDiscount  = c?.pct  ? Math.round(subtotal * c.pct) : 0;
     const flatDiscount = c?.flat || 0;
-    const gst = c?.gstFree ? 0 : Math.round((subtotal - pctDiscount) * 0.18);
-    const deposit = subtotal > 0 ? Math.round(subtotal * 0.15) + 500 : 0;
-    const total = Math.max(0, subtotal - pctDiscount + gst + deposit - flatDiscount);
+    const gst          = c?.gstFree ? 0 : Math.round((subtotal - pctDiscount) * 0.18);
+    const deposit      = subtotal > 0 ? Math.round(subtotal * 0.15) + 500 : 0;
+    const total        = Math.max(0, subtotal - pctDiscount + gst + deposit - flatDiscount);
     return { subtotal, gst, deposit, pctDiscount, flatDiscount, total };
   }, [cart, appliedCoupon]);
 
@@ -541,13 +529,13 @@ export default function ProceedToPayment() {
   const validateStep = () => {
     const e = {};
     if (step === 1) {
-      if (!form.name.trim()) e.name = "Full name is required";
-      if (!form.email.includes("@")) e.email = "Valid email required";
-      if (form.phone.length < 10) e.phone = "10-digit phone required";
-      if (!form.address.trim()) e.address = "Street address required";
-      if (!form.city.trim()) e.city = "City required";
-      if (!form.state.trim()) e.state = "State required";
-      if (form.zip.length < 6) e.zip = "Valid 6-digit PIN required";
+      if (!form.name.trim())         e.name    = "Full name is required";
+      if (!form.email.includes("@")) e.email   = "Valid email required";
+      if (form.phone.length < 10)    e.phone   = "10-digit phone required";
+      if (!form.address.trim())      e.address = "Street address required";
+      if (!form.city.trim())         e.city    = "City required";
+      if (!form.state.trim())        e.state   = "State required";
+      if (form.zip.length < 6)       e.zip     = "Valid 6-digit PIN required";
     } else if (step === 2 && !isFreeOrder) {
       if (paymentMethod === "cod" && form.codPhone.length < 10) {
         e.codPhone = "Enter 10-digit delivery contact number";
@@ -562,21 +550,21 @@ export default function ProceedToPayment() {
   const saveOrdersToDB = async (newOrderId, rzpPaymentId = "", paymentStatus = "Paid") => {
     for (const item of cart) {
       await axios.post(`${API}/api/admin/orders`, {
-        productName: item.name,
-        productImage: item.image || item.productImage || "",
-        price: item.price,
-        tenure: item.tenure,
-        totalAmount: totals.total,
-        userEmail: form.email,
-        phone: form.phone,
-        address: `${form.address}, ${form.city}, ${form.state} \u2013 ${form.zip}`,
-        landmark: form.landmark,
-        paymentMethod: isFreeOrder ? "FREE" : paymentMethod === "cod" ? "COD" : paymentMethod.toUpperCase(),
+        productName:       item.name,
+        productImage:      item.image || item.productImage || "",
+        price:             item.price,
+        tenure:            item.tenure,
+        totalAmount:       totals.total,
+        userEmail:         form.email,
+        phone:             form.phone,
+        address:           `${form.address}, ${form.city}, ${form.state} \u2013 ${form.zip}`,
+        landmark:          form.landmark,
+        paymentMethod:     isFreeOrder ? "FREE" : paymentMethod === "cod" ? "COD" : paymentMethod.toUpperCase(),
         paymentStatus,
-        approvalStatus: "Pending",
-        pauseStatus: "Active",
-        orderId: newOrderId,
-        couponApplied: appliedCoupon || "",
+        approvalStatus:    "Pending",
+        pauseStatus:       "Active",
+        orderId:           newOrderId,
+        couponApplied:     appliedCoupon || "",
         razorpayPaymentId: rzpPaymentId,
       });
     }
@@ -590,7 +578,7 @@ export default function ProceedToPayment() {
   };
 
   const buildReceiptData = (newOrderId, rzpPayId, payStatus) => ({
-    orderId: newOrderId,
+    orderId:       newOrderId,
     razorpayPayId: rzpPayId,
     paymentMethod,
     paymentStatus: payStatus,
@@ -652,23 +640,28 @@ export default function ProceedToPayment() {
       }
 
       const { data: rzpOrder } = await axios.post(`${API}/api/razorpay/create-order`, {
-        amount: totals.total,
+        amount:  totals.total,
         receipt: newOrderId,
       });
 
+      // ── Production-safe Razorpay options ─────────────────────────────────
+      // `method` key is intentionally NOT passed here.
+      // Passing method: { upi:1 } etc. causes "Uh oh! Something went wrong"
+      // (BAD_REQUEST_ERROR) in Live Mode unless your merchant account has
+      // the config.display feature explicitly enabled by Razorpay support.
+      // Razorpay standard checkout selects the payment method internally.
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "",
-        amount: rzpOrder.amount,
-        currency: rzpOrder.currency || "INR",
-        name: "RentEase",
+        key:         import.meta.env.VITE_RAZORPAY_KEY_ID || "",
+        amount:      rzpOrder.amount,
+        currency:    rzpOrder.currency || "INR",
+        name:        "RentEase",
         description: `Rental \u2014 ${cart.map(i => i.name).join(", ")}`,
-        order_id: rzpOrder.id,
+        order_id:    rzpOrder.id,
         prefill: {
-          name: form.name,
-          email: form.email,
+          name:    form.name,
+          email:   form.email,
           contact: form.phone,
         },
-        method: RAZORPAY_METHOD_MAP[paymentMethod] || {},
         theme: { color: "#560BAD" },
         modal: {
           ondismiss: () => {
@@ -676,14 +669,14 @@ export default function ProceedToPayment() {
             setServerError("Payment was cancelled. Please try again.");
           },
           confirm_close: true,
-          escape: false,
+          escape:        false,
         },
         handler: async (response) => {
           try {
             const { data: verified } = await axios.post(`${API}/api/razorpay/verify-payment`, {
-              razorpay_order_id: response.razorpay_order_id,
+              razorpay_order_id:   response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
+              razorpay_signature:  response.razorpay_signature,
             });
             if (!verified.success) {
               setServerError("Payment verification failed. Contact support. Order ID: " + newOrderId);
@@ -715,11 +708,12 @@ export default function ProceedToPayment() {
 
   const processPayment = () => {
     if (!validateStep()) return;
-    if (isFreeOrder) { processFreeOrder(); return; }
-    if (paymentMethod === "cod") { processCODOrder(); return; }
+    if (isFreeOrder)             { processFreeOrder();  return; }
+    if (paymentMethod === "cod") { processCODOrder();   return; }
     processRazorpayPayment();
   };
 
+  // ── Success screen ──────────────────────────────────────────────────────────
   if (success) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-slate-50 p-6">
       <motion.div
@@ -808,6 +802,7 @@ export default function ProceedToPayment() {
     </div>
   );
 
+  // ── Main checkout UI ────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30 font-sans pb-24">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 pt-16 pb-10">
@@ -829,7 +824,7 @@ export default function ProceedToPayment() {
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="mb-7 bg-red-50 border border-red-100 text-red-600 text-[12px] font-medium rounded-2xl px-5 py-4 flex items-center gap-3 max-w-3xl mx-auto">
               <AlertCircle size={16} className="flex-shrink-0" /> {serverError}
-              <button onClick={() => setServerError("")} className="ml-auto text-red-300 hover:text-red-500 font-black">✕</button>
+              <button onClick={() => setServerError("")} className="ml-auto text-red-300 hover:text-red-500 font-black">&#10005;</button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -838,6 +833,7 @@ export default function ProceedToPayment() {
           <div>
             <AnimatePresence mode="wait">
 
+              {/* ── STEP 1: Address ── */}
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
@@ -848,16 +844,16 @@ export default function ProceedToPayment() {
                       Delivery Address
                     </h2>
                     <div className="grid md:grid-cols-2 gap-4">
-                      <InputField label="Full Name" name="name" icon={User} placeholder="John Doe" onChange={handleChange} value={form.name} error={errors.name} />
-                      <InputField label="Mobile Number" name="phone" icon={Phone} placeholder="10-digit mobile" onChange={handleChange} value={form.phone} error={errors.phone} type="tel" maxLength="10" />
+                      <InputField label="Full Name"     name="name"    icon={User}     placeholder="John Doe"                  onChange={handleChange} value={form.name}     error={errors.name}    />
+                      <InputField label="Mobile Number" name="phone"   icon={Phone}    placeholder="10-digit mobile"           onChange={handleChange} value={form.phone}    error={errors.phone}   type="tel" maxLength="10" />
                       <div className="md:col-span-2">
-                        <InputField label="Email Address" name="email" icon={Mail} placeholder="you@email.com" onChange={handleChange} value={form.email} error={errors.email} type="email" />
+                        <InputField label="Email Address" name="email" icon={Mail}     placeholder="you@email.com"             onChange={handleChange} value={form.email}    error={errors.email}   type="email" />
                       </div>
                       <div className="md:col-span-2">
-                        <InputField label="Street Address" name="address" icon={Home} placeholder="Flat No, Building, Street" onChange={handleChange} value={form.address} error={errors.address} />
+                        <InputField label="Street Address" name="address" icon={Home}  placeholder="Flat No, Building, Street" onChange={handleChange} value={form.address}  error={errors.address} />
                       </div>
-                      <InputField label="Landmark (Optional)" name="landmark" icon={MapPin} placeholder="Near landmark" onChange={handleChange} value={form.landmark} />
-                      <InputField label="City" name="city" icon={Building2} placeholder="City" onChange={handleChange} value={form.city} error={errors.city} />
+                      <InputField label="Landmark (Optional)" name="landmark" icon={MapPin}   placeholder="Near landmark"   onChange={handleChange} value={form.landmark} />
+                      <InputField label="City"               name="city"     icon={Building2} placeholder="City"            onChange={handleChange} value={form.city}     error={errors.city} />
                       <div className="relative">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 block mb-1.5">State</label>
                         <div className="relative">
@@ -873,8 +869,8 @@ export default function ProceedToPayment() {
                         </div>
                         {errors.state && <p className="text-[10px] text-red-500 font-bold ml-1 mt-1 flex items-center gap-1"><AlertCircle size={9} />{errors.state}</p>}
                       </div>
-                      <InputField label="PIN Code" name="zip" icon={Hash} placeholder="6-digit PIN" onChange={handleChange} value={form.zip} error={errors.zip} type="tel" maxLength="6" />
-                      <InputField label="Alternate Number (Optional)" name="altPhone" icon={Phone} placeholder="Alternate mobile" onChange={handleChange} value={form.altPhone} type="tel" maxLength="10" />
+                      <InputField label="PIN Code"                    name="zip"      icon={Hash}  placeholder="6-digit PIN"     onChange={handleChange} value={form.zip}      error={errors.zip}  type="tel" maxLength="6"  />
+                      <InputField label="Alternate Number (Optional)" name="altPhone" icon={Phone} placeholder="Alternate mobile" onChange={handleChange} value={form.altPhone}               type="tel" maxLength="10" />
                     </div>
                   </div>
                   <motion.button whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.98 }}
@@ -885,6 +881,7 @@ export default function ProceedToPayment() {
                 </motion.div>
               )}
 
+              {/* ── STEP 2: Payment Method ── */}
               {step === 2 && (
                 <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
@@ -951,11 +948,12 @@ export default function ProceedToPayment() {
                   <motion.button whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.98 }}
                     onClick={() => validateStep() && setStep(3)}
                     className="w-full bg-[#560BAD] text-white py-5 rounded-2xl font-black text-[13px] uppercase tracking-widest hover:bg-violet-700 transition-all shadow-xl shadow-violet-200/50 flex items-center justify-center gap-3">
-                    Review & Confirm <ChevronRight size={18} />
+                    Review &amp; Confirm <ChevronRight size={18} />
                   </motion.button>
                 </motion.div>
               )}
 
+              {/* ── STEP 3: Review & Pay ── */}
               {step === 3 && (
                 <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
@@ -1118,6 +1116,7 @@ export default function ProceedToPayment() {
             </AnimatePresence>
           </div>
 
+          {/* ── Order Summary sidebar ── */}
           <div className="space-y-4">
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sticky top-24">
               <h3 className="text-[15px] font-bold text-slate-900 mb-5 flex items-center gap-2 tracking-tight">
@@ -1186,12 +1185,12 @@ export default function ProceedToPayment() {
 
               <div className="bg-slate-50/80 rounded-2xl p-4 space-y-2.5">
                 {[
-                  { label: "Base Rent",          value: `\u20b9${fmt(totals.subtotal)}`,       color: "text-slate-700",   skip: false                    },
-                  { label: "Coupon Discount",     value: `-\u20b9${fmt(totals.pctDiscount)}`,   color: "text-emerald-600", skip: totals.pctDiscount === 0 },
+                  { label: "Base Rent",          value: `\u20b9${fmt(totals.subtotal)}`,       color: "text-slate-700",   skip: false                              },
+                  { label: "Coupon Discount",     value: `-\u20b9${fmt(totals.pctDiscount)}`,   color: "text-emerald-600", skip: totals.pctDiscount === 0           },
                   { label: "GST (18%)",           value: totals.gst === 0 ? "Waived" : `\u20b9${fmt(totals.gst)}`, color: totals.gst === 0 ? "text-emerald-600" : "text-slate-700", skip: false },
-                  { label: "Refundable Deposit",  value: `\u20b9${fmt(totals.deposit)}`,       color: "text-slate-700",   skip: isFreeOrder              },
+                  { label: "Refundable Deposit",  value: `\u20b9${fmt(totals.deposit)}`,       color: "text-slate-700",   skip: isFreeOrder                        },
                   { label: "Flat Discount",       value: `-\u20b9${fmt(totals.flatDiscount)}`, color: "text-emerald-600", skip: totals.flatDiscount === 0 && !isFreeOrder },
-                  { label: "FREESHIP Savings",    value: `-\u20b9${fmt(totals.subtotal)}`,     color: "text-emerald-600", skip: !isFreeOrder             },
+                  { label: "FREESHIP Savings",    value: `-\u20b9${fmt(totals.subtotal)}`,     color: "text-emerald-600", skip: !isFreeOrder                       },
                 ].filter(r => !r.skip).map(({ label, value, color }) => (
                   <div key={label} className="flex justify-between text-[11px]">
                     <span className="text-slate-400 font-medium text-[9px] uppercase tracking-widest">{label}</span>
