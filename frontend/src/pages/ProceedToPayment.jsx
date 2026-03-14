@@ -11,10 +11,20 @@ import {
   Home, Download, FileText,
 } from "lucide-react";
 
-// ── API base — reads from .env on both local and Render ───────────────────────
-const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
-
+const API = "https://rentease-backend-oxyy.onrender.com";
 const fmt = (n) => new Intl.NumberFormat("en-IN").format(Math.round(n || 0));
+
+// ─── FIX 1: Razorpay key resolution ────────────────────────────────────────
+// Vite exposes only vars prefixed with VITE_ via import.meta.env.
+// If you named it RAZORPAY_KEY_ID in .env, rename it to VITE_RAZORPAY_KEY_ID.
+// As a fallback we also accept a window-level global so you can inject it via
+// your HTML template or a <script> tag without rebuilding.
+const getRazorpayKey = () =>
+  import.meta.env.VITE_RAZORPAY_KEY_ID ||      // correct .env name
+  import.meta.env.RAZORPAY_KEY_ID ||            // wrong prefix – still try
+  window.__RAZORPAY_KEY_ID__ ||                 // HTML-injected fallback
+  "";
+// ────────────────────────────────────────────────────────────────────────────
 
 const COUPONS = {
   SAVE10:   { desc: "GST waived + \u20b970 off",    gstFree: true,  flat: 70,  pct: 0,    freeOrder: false },
@@ -24,21 +34,28 @@ const COUPONS = {
 };
 
 const PAYMENT_METHODS = [
-  { id: "card",       icon: CreditCard, label: "Card",            sub: "Credit / Debit"      },
+  { id: "card",       icon: CreditCard, label: "Card",            sub: "Credit / Debit"  },
   { id: "upi",        icon: Smartphone, label: "UPI",             sub: "GPay \u00b7 PhonePe" },
   { id: "wallet",     icon: Wallet,     label: "Wallet",          sub: "Paytm \u00b7 Amazon" },
-  { id: "netbanking", icon: Landmark,   label: "Net Banking",     sub: "All major banks"     },
-  { id: "cod",        icon: Banknote,   label: "Pay on Delivery", sub: "Cash / UPI"          },
+  { id: "netbanking", icon: Landmark,   label: "Net Banking",     sub: "All major banks" },
+  { id: "cod",        icon: Banknote,   label: "Pay on Delivery", sub: "Cash / UPI"      },
 ];
 
-// ── RAZORPAY_METHOD_MAP intentionally removed ────────────────────────────────
-// Passing a `method` key to Razorpay options causes BAD_REQUEST_ERROR in Live
-// Mode unless your merchant account has that feature explicitly enabled.
-// Razorpay's standard checkout handles payment method selection internally.
+const RAZORPAY_METHOD_MAP = {
+  card:       { card: 1 },
+  upi:        { upi: 1 },
+  wallet:     { wallet: 1 },
+  netbanking: { netbanking: 1 },
+};
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
-    if (document.getElementById("rzp-script")) { resolve(true); return; }
+    if (window.Razorpay) { resolve(true); return; }          // already loaded
+    if (document.getElementById("rzp-script")) {
+      // script tag exists but Razorpay not ready yet — wait a moment
+      setTimeout(() => resolve(!!window.Razorpay), 2000);
+      return;
+    }
     const s = document.createElement("script");
     s.id = "rzp-script";
     s.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -145,9 +162,8 @@ function generateReceiptHTML(receiptData) {
   </div>
 
   <div class="body">
-
     <div class="section">
-      <div class="section-title">Customer &amp; Delivery Details</div>
+      <div class="section-title">Customer & Delivery Details</div>
       <div class="info-grid">
         <div class="info-box">
           <div class="info-label">Customer Name</div>
@@ -232,7 +248,6 @@ function generateReceiptHTML(receiptData) {
         </div>
       </div>
     </div>
-
   </div>
 
   <div class="footer">
@@ -253,9 +268,9 @@ function generateReceiptHTML(receiptData) {
 function downloadReceipt(receiptData) {
   const html = generateReceiptHTML(receiptData);
   const blob = new Blob([html], { type: "text/html" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
   a.download = `RentEase_Receipt_${receiptData.orderId}.html`;
   document.body.appendChild(a);
   a.click();
@@ -308,7 +323,7 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       <div>
         <p className="text-[11px] font-black text-blue-700 uppercase tracking-wider mb-0.5">Real Payment via Razorpay</p>
         <p className="text-[10px] text-blue-600 font-medium leading-relaxed">
-          Clicking Pay opens Razorpay&apos;s secure popup. Money is deducted only after you complete authentication (OTP / PIN) inside the popup.
+          Clicking Pay opens Razorpay's secure popup. Money is deducted only after you complete authentication (OTP / PIN) inside the popup.
         </p>
       </div>
     </div>
@@ -342,18 +357,18 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
         <div>
           <p className="text-[11px] font-black text-sky-700 mb-1">UPI Payment</p>
           <p className="text-[10px] text-sky-600 leading-relaxed">
-            Razorpay opens on the UPI tab. Enter your UPI ID (e.g. <span className="font-mono font-bold">name@okaxis</span>) or use the QR code shown inside the popup. Approve the collect request in your UPI app.
+            Razorpay opens on the UPI tab. Enter your UPI ID (e.g. <span className="font-mono font-bold">name@okaxis</span>) or use the QR code shown inside the popup.
           </p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          { name: "Google Pay",  color: "text-blue-600",   bg: "bg-blue-50"    },
-          { name: "PhonePe",     color: "text-violet-600", bg: "bg-violet-50"  },
-          { name: "Paytm",       color: "text-sky-600",    bg: "bg-sky-50"     },
-          { name: "BHIM",        color: "text-emerald-600",bg: "bg-emerald-50" },
-          { name: "CRED",        color: "text-slate-700",  bg: "bg-slate-50"   },
-          { name: "Amazon Pay",  color: "text-orange-600", bg: "bg-orange-50"  },
+          { name: "Google Pay",   color: "text-blue-600",   bg: "bg-blue-50"   },
+          { name: "PhonePe",      color: "text-violet-600", bg: "bg-violet-50" },
+          { name: "Paytm",        color: "text-sky-600",    bg: "bg-sky-50"    },
+          { name: "BHIM",         color: "text-emerald-600",bg: "bg-emerald-50"},
+          { name: "CRED",         color: "text-slate-700",  bg: "bg-slate-50"  },
+          { name: "Amazon Pay",   color: "text-orange-600", bg: "bg-orange-50" },
         ].map(app => (
           <div key={app.name} className={`${app.bg} rounded-xl px-2 py-2.5 text-center`}>
             <Smartphone size={13} className={`${app.color} mx-auto mb-1`} />
@@ -378,12 +393,12 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         {[
-          { name: "Paytm Wallet",   color: "text-sky-600",    bg: "bg-sky-50"    },
-          { name: "Amazon Pay",     color: "text-orange-600", bg: "bg-orange-50" },
-          { name: "PhonePe Wallet", color: "text-violet-600", bg: "bg-violet-50" },
-          { name: "FreeCharge",     color: "text-green-600",  bg: "bg-green-50"  },
-          { name: "MobiKwik",       color: "text-blue-600",   bg: "bg-blue-50"   },
-          { name: "Jio Money",      color: "text-indigo-600", bg: "bg-indigo-50" },
+          { name: "Paytm Wallet",    color: "text-sky-600",    bg: "bg-sky-50"    },
+          { name: "Amazon Pay",      color: "text-orange-600", bg: "bg-orange-50" },
+          { name: "PhonePe Wallet",  color: "text-violet-600", bg: "bg-violet-50" },
+          { name: "FreeCharge",      color: "text-green-600",  bg: "bg-green-50"  },
+          { name: "MobiKwik",        color: "text-blue-600",   bg: "bg-blue-50"   },
+          { name: "Jio Money",       color: "text-indigo-600", bg: "bg-indigo-50" },
         ].map(w => (
           <div key={w.name} className={`${w.bg} rounded-xl px-3 py-2.5 flex items-center gap-2`}>
             <Wallet size={11} className={w.color} />
@@ -402,7 +417,7 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
         <div>
           <p className="text-[11px] font-black text-indigo-700 mb-1">Net Banking</p>
           <p className="text-[10px] text-indigo-600 leading-relaxed">
-            Razorpay opens on the Net Banking tab. Select your bank and you will be redirected to your bank&apos;s secure login page to authorise the payment.
+            Razorpay opens on the Net Banking tab. Select your bank and you will be redirected to your bank's secure login page.
           </p>
         </div>
       </div>
@@ -424,7 +439,7 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
         <div>
           <p className="text-[11px] font-black text-amber-700 mb-1">Pay on Delivery</p>
           <p className="text-[10px] text-amber-700 leading-relaxed">
-            No online payment needed right now. Our delivery agent will collect exact cash or accept UPI at the time of delivery. OTP verification is mandatory.
+            No online payment needed right now. Our delivery agent will collect exact cash or accept UPI at the time of delivery.
           </p>
         </div>
       </div>
@@ -441,9 +456,9 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
       />
       <div className="mt-3 space-y-2">
         {[
-          { icon: Banknote, text: "Exact cash or UPI required at delivery"  },
-          { icon: Phone,    text: "OTP verification mandatory on delivery"   },
-          { icon: Truck,    text: "Delivery within 3\u20135 business days"   },
+          { icon: Banknote, text: "Exact cash or UPI required at delivery" },
+          { icon: Phone,    text: "OTP verification mandatory on delivery" },
+          { icon: Truck,    text: "Delivery within 3\u20135 business days" },
         ].map(({ icon: Icon, text }, i) => (
           <div key={i} className="flex items-center gap-2.5 bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100">
             <Icon size={11} className="text-amber-500 flex-shrink-0" />
@@ -458,18 +473,18 @@ function PaymentMethodPanel({ method, form, handleChange, errors, totals }) {
 }
 
 export default function ProceedToPayment() {
-  const [cart,          setCart]          = useState([]);
-  const [step,          setStep]          = useState(1);
-  const [loading,       setLoading]       = useState(false);
-  const [success,       setSuccess]       = useState(false);
-  const [coupon,        setCoupon]        = useState("");
+  const [cart, setCart]                   = useState([]);
+  const [step, setStep]                   = useState(1);
+  const [loading, setLoading]             = useState(false);
+  const [success, setSuccess]             = useState(false);
+  const [coupon, setCoupon]               = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("upi");
-  const [errors,        setErrors]        = useState({});
-  const [serverError,   setServerError]   = useState("");
-  const [orderId,       setOrderId]       = useState("");
+  const [errors, setErrors]               = useState({});
+  const [serverError, setServerError]     = useState("");
+  const [orderId, setOrderId]             = useState("");
   const [razorpayPayId, setRazorpayPayId] = useState("");
-  const [receiptReady,  setReceiptReady]  = useState(null);
+  const [receiptReady, setReceiptReady]   = useState(null);
   const [form, setForm] = useState({
     name: "", email: "", phone: "", address: "", city: "", state: "", zip: "",
     landmark: "", altPhone: "", codPhone: "",
@@ -488,8 +503,8 @@ export default function ProceedToPayment() {
     setForm(prev => ({
       ...prev,
       email: sessionStorage.getItem("userEmail") || "",
-      phone: sessionStorage.getItem("userPhone")  || "",
-      name:  sessionStorage.getItem("userName")   || "",
+      phone: sessionStorage.getItem("userPhone") || "",
+      name:  sessionStorage.getItem("userName")  || "",
     }));
   }, []);
 
@@ -505,7 +520,7 @@ export default function ProceedToPayment() {
     const c        = appliedCoupon ? COUPONS[appliedCoupon] : null;
     const subtotal = cart.reduce((acc, item) => acc + item.price * item.tenure, 0);
     if (c?.freeOrder) return { subtotal, gst: 0, deposit: 0, pctDiscount: 0, flatDiscount: subtotal, total: 0 };
-    const pctDiscount  = c?.pct  ? Math.round(subtotal * c.pct) : 0;
+    const pctDiscount = c?.pct  ? Math.round(subtotal * c.pct) : 0;
     const flatDiscount = c?.flat || 0;
     const gst          = c?.gstFree ? 0 : Math.round((subtotal - pctDiscount) * 0.18);
     const deposit      = subtotal > 0 ? Math.round(subtotal * 0.15) + 500 : 0;
@@ -529,13 +544,13 @@ export default function ProceedToPayment() {
   const validateStep = () => {
     const e = {};
     if (step === 1) {
-      if (!form.name.trim())         e.name    = "Full name is required";
-      if (!form.email.includes("@")) e.email   = "Valid email required";
-      if (form.phone.length < 10)    e.phone   = "10-digit phone required";
-      if (!form.address.trim())      e.address = "Street address required";
-      if (!form.city.trim())         e.city    = "City required";
-      if (!form.state.trim())        e.state   = "State required";
-      if (form.zip.length < 6)       e.zip     = "Valid 6-digit PIN required";
+      if (!form.name.trim())          e.name    = "Full name is required";
+      if (!form.email.includes("@"))  e.email   = "Valid email required";
+      if (form.phone.length < 10)     e.phone   = "10-digit phone required";
+      if (!form.address.trim())       e.address = "Street address required";
+      if (!form.city.trim())          e.city    = "City required";
+      if (!form.state.trim())         e.state   = "State required";
+      if (form.zip.length < 6)        e.zip     = "Valid 6-digit PIN required";
     } else if (step === 2 && !isFreeOrder) {
       if (paymentMethod === "cod" && form.codPhone.length < 10) {
         e.codPhone = "Enter 10-digit delivery contact number";
@@ -626,32 +641,60 @@ export default function ProceedToPayment() {
     }
   };
 
+  // ─── FIX 2: robust Razorpay payment flow ──────────────────────────────────
   const processRazorpayPayment = async () => {
     setLoading(true);
     setServerError("");
     const newOrderId = generateOrderId();
 
     try {
+      // Step A – load SDK
       const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        setServerError("Failed to load Razorpay. Check your internet connection.");
+      if (!loaded || !window.Razorpay) {
+        setServerError("Failed to load Razorpay checkout. Check your internet connection and try again.");
         setLoading(false);
         return;
       }
 
-      const { data: rzpOrder } = await axios.post(`${API}/api/razorpay/create-order`, {
-        amount:  totals.total,
-        receipt: newOrderId,
-      });
+      // Step B – resolve key
+      const razorpayKey = getRazorpayKey();
+      if (!razorpayKey) {
+        setServerError(
+          "Payment gateway key is missing. " +
+          "Please rename RAZORPAY_KEY_ID to VITE_RAZORPAY_KEY_ID in your .env file and rebuild."
+        );
+        setLoading(false);
+        return;
+      }
 
-      // ── Production-safe Razorpay options ─────────────────────────────────
-      // `method` key is intentionally NOT passed here.
-      // Passing method: { upi:1 } etc. causes "Uh oh! Something went wrong"
-      // (BAD_REQUEST_ERROR) in Live Mode unless your merchant account has
-      // the config.display feature explicitly enabled by Razorpay support.
-      // Razorpay standard checkout selects the payment method internally.
+      // Step C – create backend order
+      let rzpOrder;
+      try {
+        const { data } = await axios.post(
+          `${API}/api/razorpay/create-order`,
+          { amount: totals.total, receipt: newOrderId },
+          { timeout: 15000 }           // 15-second timeout for Render cold-starts
+        );
+        rzpOrder = data;
+      } catch (err) {
+        const msg = err?.response?.data?.error || err?.response?.data?.message || err.message || "";
+        setServerError(
+          `Could not create payment order. ${msg ? `(${msg})` : ""}` +
+          " The server may be waking up — please wait 30 seconds and try again."
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (!rzpOrder?.id) {
+        setServerError("Invalid order response from server. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Step D – open Razorpay checkout
       const options = {
-        key:         import.meta.env.VITE_RAZORPAY_KEY_ID || "",
+        key:         razorpayKey,
         amount:      rzpOrder.amount,
         currency:    rzpOrder.currency || "INR",
         name:        "RentEase",
@@ -662,58 +705,85 @@ export default function ProceedToPayment() {
           email:   form.email,
           contact: form.phone,
         },
+        // FIX 3: only pass method filter when it's defined; omit for wallet
+        // (wallet requires a sub-selection inside the popup, not a pre-filter)
+        ...(RAZORPAY_METHOD_MAP[paymentMethod]
+          ? { method: RAZORPAY_METHOD_MAP[paymentMethod] }
+          : {}),
         theme: { color: "#560BAD" },
         modal: {
           ondismiss: () => {
             setLoading(false);
-            setServerError("Payment was cancelled. Please try again.");
+            setServerError("Payment was cancelled. You can try again.");
           },
           confirm_close: true,
-          escape:        false,
+          escape: false,
         },
         handler: async (response) => {
           try {
-            const { data: verified } = await axios.post(`${API}/api/razorpay/verify-payment`, {
-              razorpay_order_id:   response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature:  response.razorpay_signature,
-            });
+            // Step E – verify on backend
+            const { data: verified } = await axios.post(
+              `${API}/api/razorpay/verify-payment`,
+              {
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+              },
+              { timeout: 15000 }
+            );
+
             if (!verified.success) {
-              setServerError("Payment verification failed. Contact support. Order ID: " + newOrderId);
+              setServerError("Payment verification failed. Please contact support with Order ID: " + newOrderId);
               setLoading(false);
               return;
             }
+
+            // Step F – save to DB
             await saveOrdersToDB(newOrderId, response.razorpay_payment_id, "Paid");
             finalizeOrder(newOrderId, response.razorpay_payment_id, "Paid via Razorpay");
           } catch (err) {
-            setServerError("Order saving failed after payment. Contact support with Payment ID: " + response.razorpay_payment_id);
-          } finally {
+            const payId = response?.razorpay_payment_id || "unknown";
+            setServerError(
+              `Payment succeeded but order saving failed. ` +
+              `Please contact support with Payment ID: ${payId}`
+            );
             setLoading(false);
           }
         },
       };
 
       const rzp = new window.Razorpay(options);
+
       rzp.on("payment.failed", (resp) => {
-        setServerError(`Payment failed: ${resp.error.description || "Unknown error"}. Please try again.`);
+        const desc = resp?.error?.description || resp?.error?.reason || "Unknown error";
+        const code = resp?.error?.code || "";
+        setServerError(`Payment failed: ${desc}${code ? ` (${code})` : ""}. Please try a different method.`);
         setLoading(false);
       });
+
       rzp.open();
 
     } catch (err) {
-      setServerError(err?.response?.data?.error || "Could not initiate payment. Please try again.");
+      // Catch-all for unexpected errors
+      console.error("Razorpay unexpected error:", err);
+      setServerError(
+        err?.response?.data?.error ||
+        err?.message ||
+        "An unexpected error occurred. Please refresh and try again."
+      );
       setLoading(false);
     }
   };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const processPayment = () => {
     if (!validateStep()) return;
-    if (isFreeOrder)             { processFreeOrder();  return; }
-    if (paymentMethod === "cod") { processCODOrder();   return; }
+    if (isFreeOrder)            { processFreeOrder();       return; }
+    if (paymentMethod === "cod") { processCODOrder();        return; }
     processRazorpayPayment();
   };
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  // ─── SUCCESS SCREEN ────────────────────────────────────────────────────────
   if (success) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-slate-50 p-6">
       <motion.div
@@ -780,7 +850,7 @@ export default function ProceedToPayment() {
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4 flex items-start gap-2">
           <FileText size={12} className="text-blue-500 flex-shrink-0 mt-0.5" />
           <p className="text-[9px] text-blue-600 font-medium leading-relaxed text-left">
-            Receipt downloads as an HTML file. Open it in any browser and use <span className="font-bold">Ctrl+P</span> (or Print) to save as PDF.
+            Receipt downloads as an HTML file. Open it in any browser and use <span className="font-bold">Ctrl+P</span> to save as PDF.
           </p>
         </div>
 
@@ -802,7 +872,7 @@ export default function ProceedToPayment() {
     </div>
   );
 
-  // ── Main checkout UI ────────────────────────────────────────────────────────
+  // ─── MAIN CHECKOUT UI ──────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30 font-sans pb-24">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 pt-16 pb-10">
@@ -824,7 +894,7 @@ export default function ProceedToPayment() {
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="mb-7 bg-red-50 border border-red-100 text-red-600 text-[12px] font-medium rounded-2xl px-5 py-4 flex items-center gap-3 max-w-3xl mx-auto">
               <AlertCircle size={16} className="flex-shrink-0" /> {serverError}
-              <button onClick={() => setServerError("")} className="ml-auto text-red-300 hover:text-red-500 font-black">&#10005;</button>
+              <button onClick={() => setServerError("")} className="ml-auto text-red-300 hover:text-red-500 font-black">✕</button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -833,7 +903,7 @@ export default function ProceedToPayment() {
           <div>
             <AnimatePresence mode="wait">
 
-              {/* ── STEP 1: Address ── */}
+              {/* ── STEP 1 ── */}
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
@@ -844,16 +914,16 @@ export default function ProceedToPayment() {
                       Delivery Address
                     </h2>
                     <div className="grid md:grid-cols-2 gap-4">
-                      <InputField label="Full Name"     name="name"    icon={User}     placeholder="John Doe"                  onChange={handleChange} value={form.name}     error={errors.name}    />
-                      <InputField label="Mobile Number" name="phone"   icon={Phone}    placeholder="10-digit mobile"           onChange={handleChange} value={form.phone}    error={errors.phone}   type="tel" maxLength="10" />
+                      <InputField label="Full Name"            name="name"    icon={User}     placeholder="John Doe"             onChange={handleChange} value={form.name}    error={errors.name}    />
+                      <InputField label="Mobile Number"        name="phone"   icon={Phone}    placeholder="10-digit mobile"      onChange={handleChange} value={form.phone}   error={errors.phone}   type="tel" maxLength="10" />
                       <div className="md:col-span-2">
-                        <InputField label="Email Address" name="email" icon={Mail}     placeholder="you@email.com"             onChange={handleChange} value={form.email}    error={errors.email}   type="email" />
+                        <InputField label="Email Address"      name="email"   icon={Mail}     placeholder="you@email.com"        onChange={handleChange} value={form.email}   error={errors.email}   type="email" />
                       </div>
                       <div className="md:col-span-2">
-                        <InputField label="Street Address" name="address" icon={Home}  placeholder="Flat No, Building, Street" onChange={handleChange} value={form.address}  error={errors.address} />
+                        <InputField label="Street Address"     name="address" icon={Home}     placeholder="Flat No, Building, Street" onChange={handleChange} value={form.address} error={errors.address} />
                       </div>
-                      <InputField label="Landmark (Optional)" name="landmark" icon={MapPin}   placeholder="Near landmark"   onChange={handleChange} value={form.landmark} />
-                      <InputField label="City"               name="city"     icon={Building2} placeholder="City"            onChange={handleChange} value={form.city}     error={errors.city} />
+                      <InputField label="Landmark (Optional)"  name="landmark" icon={MapPin}  placeholder="Near landmark"        onChange={handleChange} value={form.landmark} />
+                      <InputField label="City"                 name="city"    icon={Building2} placeholder="City"                onChange={handleChange} value={form.city}    error={errors.city}    />
                       <div className="relative">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 block mb-1.5">State</label>
                         <div className="relative">
@@ -869,8 +939,8 @@ export default function ProceedToPayment() {
                         </div>
                         {errors.state && <p className="text-[10px] text-red-500 font-bold ml-1 mt-1 flex items-center gap-1"><AlertCircle size={9} />{errors.state}</p>}
                       </div>
-                      <InputField label="PIN Code"                    name="zip"      icon={Hash}  placeholder="6-digit PIN"     onChange={handleChange} value={form.zip}      error={errors.zip}  type="tel" maxLength="6"  />
-                      <InputField label="Alternate Number (Optional)" name="altPhone" icon={Phone} placeholder="Alternate mobile" onChange={handleChange} value={form.altPhone}               type="tel" maxLength="10" />
+                      <InputField label="PIN Code"                  name="zip"      icon={Hash}   placeholder="6-digit PIN"      onChange={handleChange} value={form.zip}      error={errors.zip}  type="tel" maxLength="6" />
+                      <InputField label="Alternate Number (Optional)" name="altPhone" icon={Phone}  placeholder="Alternate mobile" onChange={handleChange} value={form.altPhone}              type="tel" maxLength="10" />
                     </div>
                   </div>
                   <motion.button whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.98 }}
@@ -881,7 +951,7 @@ export default function ProceedToPayment() {
                 </motion.div>
               )}
 
-              {/* ── STEP 2: Payment Method ── */}
+              {/* ── STEP 2 ── */}
               {step === 2 && (
                 <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
@@ -908,7 +978,7 @@ export default function ProceedToPayment() {
                           Free Order Applied!
                         </h3>
                         <p className="text-[12px] text-emerald-700 font-medium mb-3">
-                          Coupon <span className="font-black">FREESHIP</span> makes this order completely free. No payment needed.
+                          Coupon <span className="font-black">FREESHIP</span> makes this order completely free.
                         </p>
                         <div className="bg-white rounded-2xl border border-emerald-200 px-5 py-3 inline-block">
                           <p className="text-2xl font-black text-emerald-600" style={{ fontFamily: "'Cormorant Garamond', serif" }}>\u20b90 payable</p>
@@ -948,12 +1018,12 @@ export default function ProceedToPayment() {
                   <motion.button whileHover={{ scale: 1.01, y: -1 }} whileTap={{ scale: 0.98 }}
                     onClick={() => validateStep() && setStep(3)}
                     className="w-full bg-[#560BAD] text-white py-5 rounded-2xl font-black text-[13px] uppercase tracking-widest hover:bg-violet-700 transition-all shadow-xl shadow-violet-200/50 flex items-center justify-center gap-3">
-                    Review &amp; Confirm <ChevronRight size={18} />
+                    Review & Confirm <ChevronRight size={18} />
                   </motion.button>
                 </motion.div>
               )}
 
-              {/* ── STEP 3: Review & Pay ── */}
+              {/* ── STEP 3 ── */}
               {step === 3 && (
                 <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
@@ -1068,7 +1138,7 @@ export default function ProceedToPayment() {
 
                     <div className="bg-amber-50 rounded-2xl p-3.5 border border-amber-100">
                       <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
-                        By confirming, you agree to RentEase rental terms. Security deposit is fully refundable after product inspection. Plans are binding for the selected tenure.
+                        By confirming, you agree to RentEase rental terms. Security deposit is fully refundable after product inspection.
                       </p>
                     </div>
                   </div>
@@ -1116,7 +1186,7 @@ export default function ProceedToPayment() {
             </AnimatePresence>
           </div>
 
-          {/* ── Order Summary sidebar ── */}
+          {/* ── ORDER SUMMARY SIDEBAR ── */}
           <div className="space-y-4">
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sticky top-24">
               <h3 className="text-[15px] font-bold text-slate-900 mb-5 flex items-center gap-2 tracking-tight">
@@ -1185,12 +1255,12 @@ export default function ProceedToPayment() {
 
               <div className="bg-slate-50/80 rounded-2xl p-4 space-y-2.5">
                 {[
-                  { label: "Base Rent",          value: `\u20b9${fmt(totals.subtotal)}`,       color: "text-slate-700",   skip: false                              },
-                  { label: "Coupon Discount",     value: `-\u20b9${fmt(totals.pctDiscount)}`,   color: "text-emerald-600", skip: totals.pctDiscount === 0           },
-                  { label: "GST (18%)",           value: totals.gst === 0 ? "Waived" : `\u20b9${fmt(totals.gst)}`, color: totals.gst === 0 ? "text-emerald-600" : "text-slate-700", skip: false },
-                  { label: "Refundable Deposit",  value: `\u20b9${fmt(totals.deposit)}`,       color: "text-slate-700",   skip: isFreeOrder                        },
-                  { label: "Flat Discount",       value: `-\u20b9${fmt(totals.flatDiscount)}`, color: "text-emerald-600", skip: totals.flatDiscount === 0 && !isFreeOrder },
-                  { label: "FREESHIP Savings",    value: `-\u20b9${fmt(totals.subtotal)}`,     color: "text-emerald-600", skip: !isFreeOrder                       },
+                  { label: "Base Rent",         value: `\u20b9${fmt(totals.subtotal)}`,      color: "text-slate-700",   skip: false                              },
+                  { label: "Coupon Discount",    value: `-\u20b9${fmt(totals.pctDiscount)}`,  color: "text-emerald-600", skip: totals.pctDiscount === 0           },
+                  { label: "GST (18%)",          value: totals.gst === 0 ? "Waived" : `\u20b9${fmt(totals.gst)}`, color: totals.gst === 0 ? "text-emerald-600" : "text-slate-700", skip: false },
+                  { label: "Refundable Deposit", value: `\u20b9${fmt(totals.deposit)}`,      color: "text-slate-700",   skip: isFreeOrder                        },
+                  { label: "Flat Discount",      value: `-\u20b9${fmt(totals.flatDiscount)}`,color: "text-emerald-600", skip: totals.flatDiscount === 0 && !isFreeOrder },
+                  { label: "FREESHIP Savings",   value: `-\u20b9${fmt(totals.subtotal)}`,    color: "text-emerald-600", skip: !isFreeOrder                       },
                 ].filter(r => !r.skip).map(({ label, value, color }) => (
                   <div key={label} className="flex justify-between text-[11px]">
                     <span className="text-slate-400 font-medium text-[9px] uppercase tracking-widest">{label}</span>
@@ -1208,14 +1278,14 @@ export default function ProceedToPayment() {
               {isFreeOrder ? (
                 <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center gap-2.5">
                   <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />
-                  <p className="text-[10px] text-emerald-700 font-bold">FREESHIP applied \u2014 no payment needed!</p>
+                  <p className="text-[10px] text-emerald-700 font-bold">FREESHIP applied — no payment needed!</p>
                 </div>
               ) : (
                 <div className="mt-4 flex items-start gap-3 bg-violet-50/60 rounded-2xl p-3.5 border border-violet-100">
                   <ShieldCheck size={14} className="text-[#560BAD] mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-[10px] font-black text-[#560BAD] uppercase tracking-wider">Secured by Razorpay</p>
-                    <p className="text-[9px] text-violet-400 font-medium mt-0.5">256-bit SSL \u00b7 PCI DSS compliant \u00b7 Cancel anytime</p>
+                    <p className="text-[9px] text-violet-400 font-medium mt-0.5">256-bit SSL · PCI DSS compliant · Cancel anytime</p>
                   </div>
                 </div>
               )}
