@@ -14,10 +14,11 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL,
   "http://localhost:5173",
-  "http://127.0.0.1:5173"
+  "http://127.0.0.1:5173",
+  "https://rentease-frontend-qkr6.onrender.com"
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
@@ -30,10 +31,19 @@ app.use(cors({
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
-}));
+};
 
-// ✅ FIX: Express 5 no longer accepts '*' — use '/{*splat}' instead
-app.options("/{*splat}", cors());
+// ✅ Apply CORS globally — handles ALL routes including preflight OPTIONS
+app.use(cors(corsOptions));
+
+// ✅ Handles preflight for all routes — works on ALL Express versions
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.sendStatus(204);
+});
 
 // Middleware
 app.use(express.json());
