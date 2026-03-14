@@ -11,7 +11,7 @@ import {
   Download, ToggleLeft, ToggleRight, Sparkles, TrendingUp
 } from "lucide-react";
 
-const API = "http://127.0.0.1:5000";
+const API = "https://rentease-backend-oxyy.onrender.com";
 const fmt = (n) => new Intl.NumberFormat("en-IN").format(n || 0);
 const CATEGORIES = ["All", "Furniture", "Appliances", "Electronics", "Fitness", "Office", "Kitchen", "Other"];
 

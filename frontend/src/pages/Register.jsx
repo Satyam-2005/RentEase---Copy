@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, User, ShieldCheck, ArrowRight, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 // Single consistent API base — must match your backend port
-const API = "http://127.0.0.1:5000";
+const API = "https://rentease-backend-oxyy.onrender.com";
 
 const Register = () => {
   const navigate = useNavigate();

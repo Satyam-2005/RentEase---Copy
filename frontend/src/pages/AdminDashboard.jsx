@@ -10,7 +10,7 @@ import {
   Activity, BarChart2, Download, ShieldAlert, RotateCcw,
 } from "lucide-react";
 
-const API     = "http://127.0.0.1:5000";
+const API     = "https://rentease-backend-oxyy.onrender.com";
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 const STATUS_CONFIG = {

@@ -33,7 +33,7 @@ export default function Support() {
     e.preventDefault();
     setStatus({ loading: true, success: false, error: null });
     try {
-      await axios.post("http://localhost:5000/api/support", form);
+      await axios.post("https://rentease-backend-oxyy.onrender.com/api/support", form);
       setStatus({ loading: false, success: true, error: null });
       setForm({ name: "", email: "", subject: "", message: "" });
       setTimeout(() => setStatus((prev) => ({ ...prev, success: false })), 5000);

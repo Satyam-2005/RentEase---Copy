@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 
-const API = "http://127.0.0.1:5000";
+const API = "https://rentease-backend-oxyy.onrender.com";
 
 const stagger = {
   hidden: {},

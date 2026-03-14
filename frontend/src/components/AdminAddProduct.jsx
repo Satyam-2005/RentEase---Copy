@@ -35,7 +35,7 @@ const AdminAddProduct = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:5000/api/products",
+        "https://rentease-backend-oxyy.onrender.com/api/products",
         {
           name: form.name,
           category: form.category,

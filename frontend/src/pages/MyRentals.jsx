@@ -10,7 +10,7 @@ import {
   MapPin,
 } from "lucide-react";
 
-const API = "http://127.0.0.1:5000";
+const API = "https://rentease-backend-oxyy.onrender.com";
 const fmt  = (n) => new Intl.NumberFormat("en-IN").format(n || 0);
 const fmtDate = (d) => {
   if (!d) return "N/A";

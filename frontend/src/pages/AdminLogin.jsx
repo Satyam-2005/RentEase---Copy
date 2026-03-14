@@ -32,7 +32,7 @@ const AdminAuth = () => {
 
     try {
       if (isLogin) {
-        const { data } = await axios.post("http://localhost:5000/api/auth/login", {
+        const { data } = await axios.post("https://rentease-backend-oxyy.onrender.com/api/auth/login", {
           email: formData.email,
           password: formData.password,
         });
@@ -51,7 +51,7 @@ const AdminAuth = () => {
         showNotification("Admin Access Granted", "success");
         setTimeout(() => navigate("/admin-dashboard"), 1500);
       } else {
-        await axios.post("http://localhost:5000/api/auth/register", {
+        await axios.post("https://rentease-backend-oxyy.onrender.com/api/auth/register", {
           ...formData,
           role: "admin",
         });

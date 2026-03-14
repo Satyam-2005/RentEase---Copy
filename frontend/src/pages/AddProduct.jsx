@@ -44,7 +44,7 @@ const AddProduct = () => {
       console.log("Sending Payload:", payload);
 
       const response = await axios.post(
-        "http://localhost:5000/api/products",
+        "https://rentease-backend-oxyy.onrender.com/api/products",
         payload,
         {
           headers: {

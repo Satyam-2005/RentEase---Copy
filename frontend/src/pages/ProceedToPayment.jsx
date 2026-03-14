@@ -11,7 +11,7 @@ import {
   Home, Download, FileText,
 } from "lucide-react";
 
-const API = "http://127.0.0.1:5000";
+const API = "https://rentease-backend-oxyy.onrender.com";
 const fmt = (n) => new Intl.NumberFormat("en-IN").format(Math.round(n || 0));
 
 const COUPONS = {
